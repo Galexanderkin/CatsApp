@@ -17,8 +17,8 @@ using var loggerFactory = LoggerFactory.Create(loggingBuilder => loggingBuilder
 ILogger<ExceptionHandlingFilter> logger = loggerFactory.CreateLogger<ExceptionHandlingFilter>();
 
 var connectionString = builder.Configuration.GetConnectionString("MsSqlConnection");
-builder.Services.AddDbContext<ICatContext, EFCatContext>(options => options.UseSqlServer(connectionString));
-//builder.Services.AddScoped<ICatContext, DapperCatContext>();
+// builder.Services.AddDbContext<ICatContext, EFCatContext>(options => options.UseSqlServer(connectionString));
+builder.Services.AddScoped<ICatContext, DapperCatContext>();
 builder.Services.AddControllers(options => options.Filters.Add(new ExceptionHandlingFilter(logger)))
     .AddFluentValidation(fv => fv.RegisterValidatorsFromAssemblyContaining<CatValidator>());
 SharpGrip.FluentValidation.AutoValidation.Mvc.Extensions.ServiceCollectionExtensions.AddFluentValidationAutoValidation(builder.Services);

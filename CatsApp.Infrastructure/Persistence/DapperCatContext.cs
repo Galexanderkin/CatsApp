@@ -58,8 +58,41 @@ public class DapperCatContext : ICatContext
         await connection.ExecuteAsync(commandText, queryArguments);
     }
 
-    public Task<Page<Cat>> SearchAsync(string searchText, int pageNum, int pageSize, CancellationToken cancellationToken)
+    public async Task<Page<Cat>> SearchAsync(string searchText, int pageNum, int pageSize, CancellationToken cancellationToken)
     {
-        throw new NotImplementedException();
+        string commandText = $"SELECT * FROM cats WHERE LOWER(name) " +
+            $"LIKE '%@substring%' {GetAdditionalCondition(searchText)} " +
+            $"ORDER BY id LIMIT @limitVal OFFSET @offsetVal";
+
+        var queryArguments = new
+        {
+            substring = searchText,
+            limitVal = pageSize + 1,
+            offsetVal = pageSize * (pageNum - 1)
+        };
+        var cats = await connection.QueryAsync<Cat?>(commandText, queryArguments);
+        var count = cats.Count();
+        Page<Cat> catPage = new()
+        {
+            IsLast = count <= pageSize,
+            Content = count <= pageSize ? cats : cats.SkipLast(1)
+        };
+
+        return catPage;
+    }
+
+    private string GetAdditionalCondition(string searchText)
+    {
+        string condition = string.Empty;
+        if (int.TryParse(searchText, out int intValue))
+        {
+            condition = $"OR age={intValue} OR weight={intValue}";
+        }
+        else if (double.TryParse(searchText, out double doubleValue))
+        {
+            condition = $"OR weight={doubleValue}";
+        }
+
+        return condition;
     }
 }
