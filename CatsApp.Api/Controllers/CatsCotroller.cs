@@ -34,7 +34,7 @@ public class CatsCotroller : ControllerBase
     [HttpGet("")]
     public async Task<Page<CatModel>> GetPageAsync(SearchModel searchModel)
     {       
-        var page = await _mediator.Send(new GetCatPageQuery() { SearchText = searchModel.SearchText, PageNum = searchModel.PageNum, PageSize = searchModel.PageSize });
+        var page = await _mediator.Send(_mapper.Map<GetCatPageQuery>(searchModel));
         Page<CatModel> resultPage = new()
         {
             IsLast = page.IsLast,
@@ -47,7 +47,7 @@ public class CatsCotroller : ControllerBase
     [HttpPost("")]
     public async Task<int> CreateAsync([FromBody] CatModel catModel)
     {
-        return await _mediator.Send(new CreateCatCommand() { Name = catModel.Name, Weight = catModel.Weight, Age = catModel.Age });
+        return await _mediator.Send(_mapper.Map<CreateCatCommand>(catModel));
     }
 
     [HttpPut("{id}")]
