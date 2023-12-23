@@ -47,7 +47,9 @@ public class CatsCotroller : ControllerBase
     [HttpPost("")]
     public async Task<int> CreateAsync([FromBody] CatModel catModel)
     {
-        return await _mediator.Send(_mapper.Map<CreateCatCommand>(catModel));
+        int id = await _mediator.Send(_mapper.Map<CreateCatCommand>(catModel));
+
+        return id;
     }
 
     [HttpPut("{id}")]

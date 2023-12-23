@@ -2,19 +2,17 @@
 using CatsApp.Domain.Aggregates;
 using CatsApp.Domain.Persistence;
 using Dapper;
-using Microsoft.Extensions.Configuration;
-using Npgsql;
+using System.Data;
 
 namespace CatsApp.Infrastructure.Persistence;
 
 public class DapperCatContext : ICatContext
 {
-    private NpgsqlConnection connection;
+    protected IDbConnection _connection;
 
-    public DapperCatContext(IConfiguration configuration)
+    public DapperCatContext(IDbConnection connection)
     {
-        connection = new NpgsqlConnection(configuration.GetConnectionString("PostgeSQLConnection"));
-        connection.Open();
+        _connection = connection;
     }
 
     public async Task<int> CreateAsync(Cat cat, CancellationToken cancellationToken)
@@ -27,21 +25,21 @@ public class DapperCatContext : ICatContext
             age = cat.Age
         };
 
-        return await connection.QueryFirstOrDefaultAsync<int>(commandText, queryArguments);
+        return await _connection.QueryFirstOrDefaultAsync<int>(commandText, queryArguments);
     }
 
     public async Task DeleteAsync(Cat cat, CancellationToken cancellationToken)
     {
         string commandText = $"DELETE FROM cats WHERE id=@id";
         var queryArguments = new { id = cat.Id };
-        await connection.ExecuteAsync(commandText, queryArguments);
+        await _connection.ExecuteAsync(commandText, queryArguments);
     }
 
     public async ValueTask<Cat?> ReadAsync(int catId, CancellationToken cancellationToken)
     {
         string commandText = $"SELECT * FROM cats WHERE id=@id";
         var queryArguments = new { id = catId };
-        return await connection.QueryFirstOrDefaultAsync<Cat>(commandText, queryArguments);
+        return await _connection.QueryFirstOrDefaultAsync<Cat>(commandText, queryArguments);
     }
 
     public async Task SaveAsync(Cat cat, CancellationToken cancellationToken)
@@ -55,24 +53,18 @@ public class DapperCatContext : ICatContext
             id = cat.Id
         };
 
-        await connection.ExecuteAsync(commandText, queryArguments);
+        await _connection.ExecuteAsync(commandText, queryArguments);
     }
 
-    public async Task<Page<Cat>> SearchAsync(string searchText, int pageNum, int pageSize, CancellationToken cancellationToken)
+    public async Task<Page<Cat?>> SearchAsync(string searchText, int pageNum, int pageSize, CancellationToken cancellationToken)
     {
         string commandText = $"SELECT * FROM cats WHERE LOWER(name) " +
-            $"LIKE '%@substring%' {GetAdditionalCondition(searchText)} " +
-            $"ORDER BY id LIMIT @limitVal OFFSET @offsetVal";
+            $"LIKE '%{searchText}%' {GetAdditionalCondition(searchText)} " +
+            $"ORDER BY id LIMIT {pageSize + 1} OFFSET {pageSize * (pageNum - 1)}";
 
-        var queryArguments = new
-        {
-            substring = searchText,
-            limitVal = pageSize + 1,
-            offsetVal = pageSize * (pageNum - 1)
-        };
-        var cats = await connection.QueryAsync<Cat?>(commandText, queryArguments);
+        var cats = await _connection.QueryAsync<Cat?>(commandText);
         var count = cats.Count();
-        Page<Cat> catPage = new()
+        Page<Cat?> catPage = new()
         {
             IsLast = count <= pageSize,
             Content = count <= pageSize ? cats : cats.SkipLast(1)
